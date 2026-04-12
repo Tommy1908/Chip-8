@@ -33,7 +33,9 @@ typedef struct
     uint32_t fg_color;     // Foreground RGBA8888
     uint32_t bg_color;     // Background RGBA8888
     bool pixel_outlines;
-    uint32_t instructions_per_second; //
+    uint32_t instructions_per_second;
+    bool increment_i_on_0xFX; // https://en.wikipedia.org/wiki/CHIP-8#cite_note-increment-28
+
 } config_t;
 
 typedef enum
@@ -103,7 +105,7 @@ bool set_config_form_args(config_t *config, const int argc, char **argv)
     // Defaults
     config->window_width = 64;  // Original X
     config->window_height = 32; // Original Y
-    config->scale = 10;
+    config->scale = 30;
 
     config->fg_color = 0xFFFFFFFF;
     config->bg_color = 0x00000000;
@@ -112,6 +114,8 @@ bool set_config_form_args(config_t *config, const int argc, char **argv)
     config->window_flags = 0;
 
     config->instructions_per_second = 500;
+
+    config->increment_i_on_0xFX = true; // On the original and chip-48 was incremented, schip was left unmodified
 
     // TODO: OVERRIDE
     for (int i = 1; i < argc; i++)
@@ -396,7 +400,7 @@ void handle_input(chip8_t *chip8)
 }
 
 #ifdef DEBUG
-void print_debug_info(chip8_t *chip8)
+void print_debug_info(const chip8_t *chip8, const config_t *config)
 {
     printf("Addr: 0x%04X, Opcode: 0x%04X Desc: ",
            chip8->PC - 2, chip8->instruction.opcode);
@@ -523,13 +527,11 @@ void print_debug_info(chip8_t *chip8)
     {
         if (chip8->instruction.N != 0)
         {
-            printf("V%X = 0x%02X, V%X = 0x%02X , if(0x%02X != 0x%02X) then: PC(next) = 0x%03X -> 0x%03X else: PC(next) = 0x%03X\n", chip8->instruction.X, chip8->V[chip8->instruction.X], chip8->instruction.Y, chip8->V[chip8->instruction.Y], chip8->V[chip8->instruction.X], chip8->V[chip8->instruction.Y], chip8->PC, (chip8->PC) + 2, chip8->PC);
+            printf("0x%04X is an Invalid OPCODE\n", chip8->instruction.opcode);
             break;
         }
-        // Skips the next instruction if VX does not equal VY.(Usually the next instruction is a jump to skip a code block).case 0XA:
-        if (chip8->V[chip8->instruction.X] != chip8->V[chip8->instruction.Y])
-            chip8->PC += 2;
-
+        // 0x9XY0: Skips the next instruction if VX does not equal VY. (Usually the next instruction is a jump to skip a code block).
+        printf("V%X = 0x%02X, V%X = 0x%02X , if(0x%02X != 0x%02X) then: PC(next) = 0x%03X -> 0x%03X else: PC(next) = 0x%03X\n", chip8->instruction.X, chip8->V[chip8->instruction.X], chip8->instruction.Y, chip8->V[chip8->instruction.Y], chip8->V[chip8->instruction.X], chip8->V[chip8->instruction.Y], chip8->PC, (chip8->PC) + 2, chip8->PC);
         break;
     }
     case 0xA:
@@ -636,15 +638,13 @@ void print_debug_info(chip8_t *chip8)
         case 0x55:
         {
             // 0xFX55: Stores from V0 to VX (including VX) in memory, starting at address I.
-            // TODO: Update if config has parameter option for this
-            printf("Store from V0 to V%X into I: 0x%03X, 0x%03X+1, ... + 0x%03X+(%X)\n", chip8->instruction.X, chip8->I, chip8->I, chip8->I, chip8->instruction.X);
+            printf("Store from V0 to V%X into I: 0x%03X, 0x%03X+1, ... + 0x%03X+(%X) (Is I incremented? -> %d)\n", chip8->instruction.X, chip8->I, chip8->I, chip8->I, chip8->instruction.X, config->increment_i_on_0xFX);
             break;
         }
         case 0x65:
         {
             // 0xFX65: Fills from V0 to VX (including VX) with values from memory, starting at address I. The offset from I is increased by 1 for each value read, but I itself is left unmodified.
-            // TODO: Update if config has parameter option for this
-            printf("Store from I: 0x%03X, 0x%03X+1 ... 0x%03X+(%X) into V0 - V%X \n", chip8->I, chip8->I, chip8->I, chip8->instruction.X, chip8->instruction.X);
+            printf("Store from I: 0x%03X, 0x%03X+1 ... 0x%03X+(%X) into V0 - V%X (Is  I incremented? -> %d)\n", chip8->I, chip8->I, chip8->I, chip8->instruction.X, chip8->instruction.X, config->instructions_per_second);
             break;
         }
         default:
@@ -674,7 +674,7 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
     chip8->instruction.Y = chip8->instruction.opcode >> 4 & 0X000F;
 
 #ifdef DEBUG
-    print_debug_info(chip8);
+    print_debug_info(chip8, config);
 #endif
 
     // Emulate opcode
@@ -870,7 +870,7 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
             for (int8_t j = 7; j >= 0; j--)
             {
                 // If sprite pixel and display pixel is on set carry flag
-                uint8_t sprite_bit = sprite_data & (1 << j); // Starts with the one furthes to the left (MSB), we isolate that bit
+                uint8_t sprite_bit = sprite_data >> j & 0x01; // Starts with the one furthes to the left (MSB), we isolate that bit
                 uint8_t display_bit = chip8->display[Y * config->window_width + X];
                 if (sprite_bit && display_bit)
                 {
@@ -980,10 +980,13 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
             // 0xFX55: Stores from V0 to VX (including VX) in memory, starting at address I.
             // The offset from I is increased by 1 for each value written, but I itself is left unmodified.
             // In the original CHIP-8 implementation, and also in CHIP-48, I is left incremented after this instruction had been executed. In SCHIP, I is left unmodified.
-            // TODO: Right now im using SCHIP, left unmodified, could add to config the other option in case is needed
             for (uint8_t x = 0; x <= chip8->instruction.X; x++)
             {
                 chip8->ram[chip8->I + x] = chip8->V[x];
+            }
+            if (config->increment_i_on_0xFX)
+            {
+                chip8->I += chip8->instruction.X + 1;
             }
             break;
         }
@@ -997,6 +1000,10 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
             {
                 chip8->V[x] = chip8->ram[chip8->I + x];
             }
+            if (config->increment_i_on_0xFX)
+            {
+                chip8->I += chip8->instruction.X + 1;
+            }
             break;
         }
         default:
@@ -1006,6 +1013,14 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
     default:
         break;
     }
+}
+
+void update_timers(chip8_t *chip8_t)
+{
+    if (chip8_t->delay_timer)
+        chip8_t->delay_timer--;
+    if (chip8_t->sound_timer)
+        chip8_t->sound_timer--;
 }
 
 int main(int argc, char **argv)
@@ -1048,7 +1063,7 @@ int main(int argc, char **argv)
             continue;
 
         // Get time
-        uint64_t start_time = SDL_GetPerformanceCounter();
+        const uint64_t start_time = SDL_GetPerformanceCounter();
 
         // In this frame emulate config.instructions_per_second / 60 instructions (60hz)
         for (uint32_t i = 0; i < config.instructions_per_second / 60; i++)
@@ -1056,13 +1071,19 @@ int main(int argc, char **argv)
             emulate_instruction(&chip8, &config);
         }
         // Get time after peforming instructions
-        uint64_t finish_time = SDL_GetPerformanceCounter();
+        const uint64_t finish_time = SDL_GetPerformanceCounter();
 
         // Delay fo aprox 60fs (1000ms/60 ~= 16)
-        double time_enlapsed = (double)((finish_time - start_time) / 1000) / SDL_GetPerformanceFrequency();
-        SDL_Delay(16); //- actual time it took (2 get times and emulate)
+        double time_elapsed_ms = (double)((finish_time - start_time) * 1000) / SDL_GetPerformanceFrequency();
+        printf("Intructions took %fms\n", time_elapsed_ms);
+        if (16.67f > time_elapsed_ms)
+        {
+            SDL_Delay((uint32_t)(16.67f - time_elapsed_ms));
+        }
         // Update with changes
         update_screen(sdl, &config, &chip8);
+        // Update timers (delay and sound)
+        update_timers(&chip8);
 
         if (chip8.PC > 4096)
         {
