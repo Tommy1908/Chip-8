@@ -1032,19 +1032,12 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
     }
 }
 
-void update_timers(chip8_t *chip8, sdl_t *sdl)
+void update_timers(chip8_t *chip8)
 {
     if (chip8->delay_timer)
         chip8->delay_timer--;
-    if (chip8->sound_timer > 0)
-    {
+    if (chip8->sound_timer)
         chip8->sound_timer--;
-        SDL_PauseAudioDevice(sdl->device, 0); // Play sound
-    }
-    else
-    {
-        SDL_PauseAudioDevice(sdl->device, 1); // Pause sound
-    }
 }
 
 int main(int argc, char **argv)
@@ -1106,7 +1099,17 @@ int main(int argc, char **argv)
         // Update with changes
         update_screen(sdl, &config, &chip8);
         // Update timers (delay and sound)
-        update_timers(&chip8, &sdl);
+        update_timers(&chip8);
+        // Play sound
+        if (chip8.sound_timer > 0)
+        {
+            chip8.sound_timer--;
+            SDL_PauseAudioDevice(sdl.device, 0); // Play sound
+        }
+        else
+        {
+            SDL_PauseAudioDevice(sdl.device, 1); // Pause sound
+        }
 
         if (chip8.PC > 4096)
         {
