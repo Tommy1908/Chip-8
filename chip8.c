@@ -761,14 +761,9 @@ int main(int argc, char **argv)
         update_timers(&chip8);
         // Play sound
         if (chip8.sound_timer > 0)
-        {
-            chip8.sound_timer--;
             SDL_PauseAudioDevice(sdl.device, 0); // Play sound
-        }
         else
-        {
             SDL_PauseAudioDevice(sdl.device, 1); // Pause sound
-        }
 
         if (chip8.PC > 4096)
         {
