@@ -5,6 +5,8 @@
 
 #include <SDL2/SDL.h>
 
+#include "config.h"
+
 #define ENTRY_POINT 0x200 // Where roms are loaded on ram
 
 // SDL Container
@@ -26,26 +28,6 @@ typedef struct
     uint8_t X;    // 4 bit register
     uint8_t Y;    // 4 bit register
 } instruction_t;
-
-typedef struct
-{
-    // SDL Window size
-    uint32_t window_width;
-    uint32_t window_height;
-    uint32_t scale;
-    uint32_t window_flags; // https://wiki.libsdl.org/SDL2/SDL_WindowFlags
-    uint32_t fg_color;     // Foreground RGBA8888
-    uint32_t bg_color;     // Background RGBA8888
-    bool pixel_outlines;
-    uint32_t instructions_per_second;
-    bool increment_i_on_0xFX; // https://en.wikipediaokl.org/wiki/CHIP-8#cite_note-increment-28
-
-    // TODO: Audio stuff should check later
-    uint32_t square_wave_freq; // Frequency of square wave sound e.g. 440hz for middle A
-    uint32_t audio_sample_rate;
-    int16_t volume; // How loud or not is the sound
-
-} config_t;
 
 typedef enum
 {
@@ -154,38 +136,6 @@ void final_cleanup(const sdl_t *sdl)
     SDL_DestroyRenderer(sdl->renderer);
     SDL_DestroyWindow(sdl->window);
     SDL_Quit();
-}
-
-// Set up initial emulator config from arguments
-bool set_config_form_args(config_t *config, const int argc, char **argv)
-{
-    // Defaults
-    config->window_width = 64;  // Original X
-    config->window_height = 32; // Original Y
-    config->scale = 30;
-
-    config->fg_color = 0xFFFFFFFF;
-    config->bg_color = 0x00000000;
-    config->pixel_outlines = false; // By default I disable the outline
-
-    config->window_flags = 0;
-
-    config->instructions_per_second = 500;
-
-    config->increment_i_on_0xFX = true; // On the original and chip-48 was incremented, schip was left unmodified
-
-    // TODO: AUDIO
-    config->square_wave_freq = 440;    // Nota La (A4)
-    config->audio_sample_rate = 44100; // 44.1Khz
-    config->volume = 3000;             // Un volumen razonable para int16_t
-
-    // TODO: OVERRIDE
-    for (int i = 1; i < argc; i++)
-    {
-        (void)argv[i];
-    }
-
-    return true;
 }
 
 // Initialize CHIP8 (STATE) machine
@@ -1107,7 +1057,7 @@ int main(int argc, char **argv)
     }
     // Initialize emulator config
     config_t config = {0};
-    if (!set_config_form_args(&config, argc, argv))
+    if (!set_config_from_args(&config, argc, argv))
         exit(EXIT_FAILURE);
 
     // Initialize SDL
@@ -1149,7 +1099,6 @@ int main(int argc, char **argv)
 
         // Delay fo aprox 60fs (1000ms/60 ~= 16)
         double time_elapsed_ms = (double)((finish_time - start_time) * 1000) / SDL_GetPerformanceFrequency();
-        printf("Intructions took %fms\n", time_elapsed_ms);
         if (16.67f > time_elapsed_ms)
         {
             SDL_Delay((uint32_t)(16.67f - time_elapsed_ms));
