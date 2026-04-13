@@ -10,6 +10,8 @@ typedef struct
 {
     SDL_Window *window;
     SDL_Renderer *renderer;
+    SDL_AudioSpec want, have;
+    SDL_AudioDeviceID device;
 } sdl_t;
 
 // Instruction format
@@ -34,7 +36,12 @@ typedef struct
     uint32_t bg_color;     // Background RGBA8888
     bool pixel_outlines;
     uint32_t instructions_per_second;
-    bool increment_i_on_0xFX; // https://en.wikipedia.org/wiki/CHIP-8#cite_note-increment-28
+    bool increment_i_on_0xFX; // https://en.wikipediaokl.org/wiki/CHIP-8#cite_note-increment-28
+
+    // TODO: Audio stuff should check later
+    uint32_t square_wave_freq; // Frequency of square wave sound e.g. 440hz for middle A
+    uint32_t audio_sample_rate;
+    int16_t volume; // How loud or not is the sound
 
 } config_t;
 
@@ -62,7 +69,28 @@ typedef struct
     instruction_t instruction; // Current instruction
 } chip8_t;
 
-bool init_sdl(sdl_t *sdl, const config_t config)
+// TODO: Audio stuff
+// SDL Audio callback
+// Fill out stream/audio buffer with data
+void audio_callback(void *userdata, uint8_t *stream, int len)
+{
+    config_t *config = (config_t *)userdata;
+
+    int16_t *audio_data = (int16_t *)stream;
+    static uint32_t running_sample_index = 0;
+    const int32_t square_wave_period = config->audio_sample_rate / config->square_wave_freq;
+    const int32_t half_square_wave_period = square_wave_period / 2;
+
+    // We are filling out 2 bytes at a time (int16_t), len is in bytes,
+    //   so divide by 2
+    // If the current chunk of audio for the square wave is the crest of the wave,
+    //   this will add the volume, otherwise it is the trough of the wave, and will add
+    //   "negative" volume
+    for (int i = 0; i < len / 2; i++)
+        audio_data[i] = ((running_sample_index++ / half_square_wave_period) % 2) ? config->volume : -config->volume;
+}
+
+bool init_sdl(sdl_t *sdl, config_t *config)
 {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_TIMER) != 0)
     {
@@ -73,9 +101,9 @@ bool init_sdl(sdl_t *sdl, const config_t config)
     sdl->window = SDL_CreateWindow("Tommy's Chip8",
                                    SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED,
-                                   config.window_width * config.scale,
-                                   config.window_height * config.scale,
-                                   config.window_flags);
+                                   config->window_width * config->scale,
+                                   config->window_height * config->scale,
+                                   config->window_flags);
     if (!sdl->window)
     {
         SDL_Log("Couldn't create window %s\n", SDL_GetError());
@@ -86,6 +114,33 @@ bool init_sdl(sdl_t *sdl, const config_t config)
     if (!sdl->renderer)
     {
         SDL_Log("Couldn't create Renderer %s\n", SDL_GetError());
+        return false;
+    }
+
+    // TODO: Audio
+    // Init Audio stuff
+    sdl->want = (SDL_AudioSpec){
+        .freq = 44100,          // 44100hz "CD" quality
+        .format = AUDIO_S16SYS, // Signed 16 bit little endian
+        .channels = 1,          // Mono, 1 channel
+        .samples = 256,
+        .callback = audio_callback,
+        .userdata = config, // Userdata passed to audio callback
+    };
+
+    sdl->device = SDL_OpenAudioDevice(NULL, 0, &sdl->want, &sdl->have, 0);
+
+    if (sdl->device == 0)
+    {
+        SDL_Log("Could not get an Audio Device %s\n", SDL_GetError());
+        return false;
+    }
+
+    if ((sdl->want.format != sdl->have.format) ||
+        (sdl->want.channels != sdl->have.channels))
+    {
+
+        SDL_Log("Could not get desired Audio Spec\n");
         return false;
     }
 
@@ -116,6 +171,11 @@ bool set_config_form_args(config_t *config, const int argc, char **argv)
     config->instructions_per_second = 500;
 
     config->increment_i_on_0xFX = true; // On the original and chip-48 was incremented, schip was left unmodified
+
+    // TODO: AUDIO
+    config->square_wave_freq = 440;    // Nota La (A4)
+    config->audio_sample_rate = 44100; // 44.1Khz
+    config->volume = 3000;             // Un volumen razonable para int16_t
 
     // TODO: OVERRIDE
     for (int i = 1; i < argc; i++)
@@ -960,7 +1020,7 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
         {
             // 0xFX29: Sets I to the location of the sprite for the character in VX(only consider the lowest nibble). Characters 0-F (in hexadecimal) are represented by a 4x5 font.
             // The font starts in 0x0. Each row takes 8 bits, which only 4 columns are used. And there are 5 rows for each char.
-            const uint8_t character = chip8->V[chip8->instruction.X];
+            const uint8_t character = chip8->V[chip8->instruction.X] & 0x0F;
             const uint16_t sprite_location = character * 5;
             chip8->I = sprite_location;
             break;
@@ -1015,12 +1075,19 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
     }
 }
 
-void update_timers(chip8_t *chip8_t)
+void update_timers(chip8_t *chip8, sdl_t *sdl)
 {
-    if (chip8_t->delay_timer)
-        chip8_t->delay_timer--;
-    if (chip8_t->sound_timer)
-        chip8_t->sound_timer--;
+    if (chip8->delay_timer)
+        chip8->delay_timer--;
+    if (chip8->sound_timer > 0)
+    {
+        chip8->sound_timer--;
+        SDL_PauseAudioDevice(sdl->device, 0); // Play sound
+    }
+    else
+    {
+        SDL_PauseAudioDevice(sdl->device, 1); // Pause sound
+    }
 }
 
 int main(int argc, char **argv)
@@ -1038,7 +1105,7 @@ int main(int argc, char **argv)
 
     // Initialize SDL
     sdl_t sdl = {0};
-    if (!init_sdl(&sdl, config))
+    if (!init_sdl(&sdl, &config))
         exit(EXIT_FAILURE);
 
     // Initializa CHIP8 MACHINE
@@ -1083,7 +1150,7 @@ int main(int argc, char **argv)
         // Update with changes
         update_screen(sdl, &config, &chip8);
         // Update timers (delay and sound)
-        update_timers(&chip8);
+        update_timers(&chip8, &sdl);
 
         if (chip8.PC > 4096)
         {
