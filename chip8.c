@@ -350,7 +350,9 @@ void handle_input(chip8_t *chip8)
                 break;
 
             default:
+#ifdef DEBUG
                 SDL_Log("Tecla presionada: %s\n", SDL_GetKeyName(event.key.keysym.sym));
+#endif
                 break;
             }
             break;
