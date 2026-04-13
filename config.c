@@ -6,7 +6,7 @@ bool set_config_from_args(config_t *config, const int argc, char **argv)
     // Defaults
     config->window_width = 64;  // Original X
     config->window_height = 32; // Original Y
-    config->scale = 30;
+    config->scale = 10;
 
     config->fg_color = 0xFFFFFFFF;
     config->bg_color = 0x00000000;
@@ -14,9 +14,10 @@ bool set_config_from_args(config_t *config, const int argc, char **argv)
 
     config->window_flags = 0;
 
-    config->instructions_per_second = 500;
+    config->instructions_per_second = 700;
 
     config->increment_i_on_0xFX = true; // On the original and chip-48 was incremented, schip was left unmodified
+    config->shift_from_vy = true;       // On the original it took vy and shift it into vx, later it was only from vx
 
     // TODO: AUDIO
     config->square_wave_freq = 440;    // Nota La (A4)

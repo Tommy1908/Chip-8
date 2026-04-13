@@ -431,65 +431,79 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
         case 1:
             // 0x8XY1: Sets VX to VX or VY (bitwise)
             chip8->V[chip8->instruction.X] |= chip8->V[chip8->instruction.Y];
+            chip8->V[0xF] = 0; // Quirk: Reset VF to 0 (might add to config if neccesary)
             break;
         case 2:
             // 0x8XY2: Sets VX to VX and VY (bitwise)
             chip8->V[chip8->instruction.X] &= chip8->V[chip8->instruction.Y];
+            chip8->V[0xF] = 0; // Quirk: Reset VF to 0 (might add to config if neccesary)
             break;
         case 3:
             // 0x8XY3: Sets VX to VX xor VY (bitwise)
             chip8->V[chip8->instruction.X] ^= chip8->V[chip8->instruction.Y];
+            chip8->V[0xF] = 0; // Quirk: Reset VF to 0 (might add to config if neccesary)
             break;
         case 4:
             // 0x8XY4: Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.
-            if ((uint16_t)chip8->V[chip8->instruction.X] + chip8->V[chip8->instruction.Y] > 255)
-            {
-                chip8->V[0xF] = 1;
-            }
-            else
-            {
-                chip8->V[0xF] = 0;
-            }
+            const bool overflow = (uint16_t)chip8->V[chip8->instruction.X] + chip8->V[chip8->instruction.Y] > 255;
+
             chip8->V[chip8->instruction.X] += chip8->V[chip8->instruction.Y];
+            chip8->V[0xF] = overflow;
             break;
         case 5:
+        {
             // 0x8XY5: VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VX >= VY and 0 if not)
-            if (chip8->V[chip8->instruction.X] >= chip8->V[chip8->instruction.Y])
-            {
-                chip8->V[0xF] = 1;
-            }
-            else
-            {
-                chip8->V[0xF] = 0;
-            }
+            const bool underflow = chip8->V[chip8->instruction.X] >= chip8->V[chip8->instruction.Y];
+
             chip8->V[chip8->instruction.X] -= chip8->V[chip8->instruction.Y];
+            chip8->V[0xF] = underflow;
+
             break;
+        }
         case 6:
             // 0x8XY6: Shifts VX to the right by 1, then stores the least significant bit of VX prior to the shift into VF.
             // CHIP-8's opcodes 8XY6 and 8XYE (the bit shift instructions), which were in fact undocumented opcodes in the original interpreter, shifted the value in the register VY and stored the result in VX. The CHIP-48 and SCHIP implementations instead ignored VY, and simply shifted VX.[18]
-            // TODO: Add to config if needed
-            chip8->V[0xF] = chip8->V[chip8->instruction.X] & 0x01;
-            chip8->V[chip8->instruction.X] >>= 1;
-            break;
-        case 7:
-            // 0x8XY7: Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX).
-            if (chip8->V[chip8->instruction.Y] >= chip8->V[chip8->instruction.X])
+            if (config->shift_from_vy)
             {
-                chip8->V[0xF] = 1;
+                bool lsb = chip8->V[chip8->instruction.Y] & 0x01;
+                chip8->V[chip8->instruction.X] = chip8->V[chip8->instruction.Y] >> 1;
+                chip8->V[0xF] = lsb;
             }
             else
             {
-                chip8->V[0xF] = 0;
+                bool lsb = chip8->V[chip8->instruction.X] & 0x01;
+                chip8->V[chip8->instruction.X] >>= 1;
+                chip8->V[0xF] = lsb;
             }
-            chip8->V[chip8->instruction.X] = chip8->V[chip8->instruction.Y] - chip8->V[chip8->instruction.X];
+
             break;
+        case 7:
+        {
+            // 0x8XY7: Sets VX to VY minus VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VY >= VX).
+            const bool underflow = chip8->V[chip8->instruction.Y] >= chip8->V[chip8->instruction.X];
+
+            chip8->V[chip8->instruction.X] = chip8->V[chip8->instruction.Y] - chip8->V[chip8->instruction.X];
+            chip8->V[0xF] = underflow;
+            break;
+        }
         case 0XE:
+        {
             // 0x8XYE: Shifts VX to the left by 1, then sets VF to 1 if the most significant bit of VX prior to that shift was set, or to 0 if it was unset.
             // CHIP-8's opcodes 8XY6 and 8XYE (the bit shift instructions), which were in fact undocumented opcodes in the original interpreter, shifted the value in the register VY and stored the result in VX. The CHIP-48 and SCHIP implementations instead ignored VY, and simply shifted VX.[18]
-            // TODO: Add to config if needed
-            chip8->V[0xF] = (chip8->V[chip8->instruction.X] & 0x80) >> 7;
-            chip8->V[chip8->instruction.X] <<= 1;
+            if (config->shift_from_vy)
+            {
+                bool msb = (chip8->V[chip8->instruction.Y] & 0x80) >> 7;
+                chip8->V[chip8->instruction.X] = chip8->V[chip8->instruction.Y] << 1;
+                chip8->V[0xF] = msb;
+            }
+            else
+            {
+                bool msb = (chip8->V[chip8->instruction.X] & 0x80) >> 7;
+                chip8->V[chip8->instruction.X] <<= 1;
+                chip8->V[0xF] = msb;
+            }
             break;
+        }
         default:
             break;
         }
@@ -596,19 +610,30 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
         }
         case 0x0A: // Check
         {
-            // 0xFX0A: A key press is awaited, and then stored in VX (blocking operation, all instruction halted until next key event, delay and sound timers should continue processing).
-            bool any_key_pressed = false;
+            static bool keypad[16] = {0};
+            static bool new_keypad[16] = {0};
+            bool is_waiting = true;
             for (uint8_t i = 0; i < sizeof chip8->keypad; i++)
             {
                 if (chip8->keypad[i])
                 {
-                    chip8->V[chip8->instruction.X] = i;
-                    any_key_pressed = true;
+                    keypad[i] = 1;
+                    new_keypad[i] = 1;
+                }
+                if (!chip8->keypad[i])
+                {
+                    new_keypad[i] = 0;
+                }
+                if (keypad[i] && !new_keypad[i])
+                {
+                    memset(keypad, 0, sizeof(keypad));
+                    memset(new_keypad, 0, sizeof(new_keypad));
+                    is_waiting = false;
                     break;
                 }
             }
-            // If no key pressed, we fetch again this instrucction
-            if (!any_key_pressed)
+            // If no key pressed (& and released) , we fetch again this instrucction
+            if (is_waiting)
                 chip8->PC -= 2;
             break;
         }

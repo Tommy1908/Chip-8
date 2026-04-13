@@ -41,7 +41,7 @@ bool init_sdl(sdl_t *sdl, config_t *config)
         return false;
     }
 
-    sdl->renderer = SDL_CreateRenderer(sdl->window, -1, SDL_RENDERER_ACCELERATED);
+    sdl->renderer = SDL_CreateRenderer(sdl->window, -1, SDL_RENDERER_PRESENTVSYNC);
     if (!sdl->renderer)
     {
         SDL_Log("Couldn't create Renderer %s\n", SDL_GetError());

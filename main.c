@@ -41,8 +41,6 @@ int main(int argc, char **argv)
     // Main emulator loop
     while (chip8.state != QUIT)
     {
-        // Handle User input
-        handle_input(&chip8);
 
         if (chip8.state == PAUSED)
             continue;
@@ -53,6 +51,9 @@ int main(int argc, char **argv)
         // In this frame emulate config.instructions_per_second / 60 instructions (60hz)
         for (uint32_t i = 0; i < config.instructions_per_second / 60; i++)
         {
+            // Handle User input
+            handle_input(&chip8);
+
             emulate_instruction(&chip8, &config);
         }
         // Get time after peforming instructions

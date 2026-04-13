@@ -13,7 +13,9 @@ typedef struct
     uint32_t bg_color;     // Background RGBA8888
     bool pixel_outlines;
     uint32_t instructions_per_second;
+
     bool increment_i_on_0xFX; // https://en.wikipediaokl.org/wiki/CHIP-8#cite_note-increment-28
+    bool shift_from_vy;       // https://en.wikipedia.org/wiki/CHIP-8#cite_note-bitshift-25
 
     // TODO: Audio stuff should check later
     uint32_t square_wave_freq; // Frequency of square wave sound e.g. 440hz for middle A
