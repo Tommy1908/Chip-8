@@ -5,6 +5,8 @@
 
 #include <SDL2/SDL.h>
 
+#define ENTRY_POINT 0x200 // Where roms are loaded on ram
+
 // SDL Container
 typedef struct
 {
@@ -189,7 +191,8 @@ bool set_config_form_args(config_t *config, const int argc, char **argv)
 // Initialize CHIP8 (STATE) machine
 bool init_chip8(chip8_t *chip8, const char *rom_name)
 {
-    const uint16_t entry_point = 0x200; // Where roms are loaded on ram
+    memset(chip8, 0, sizeof(chip8_t)); // If coming back from reset
+
     const uint8_t font[] = {
         0xF0, 0x90, 0x90, 0x90, 0xF0, // 0      1110 0000
         0x20, 0x60, 0x20, 0x20, 0x70, // 1      10001 0000
@@ -222,7 +225,7 @@ bool init_chip8(chip8_t *chip8, const char *rom_name)
 
     fseek(rom, 0, SEEK_END);
     const size_t rom_size = ftell(rom);
-    const size_t max_size = sizeof(chip8->ram) - entry_point;
+    const size_t max_size = sizeof(chip8->ram) - ENTRY_POINT;
     rewind(rom);
 
     if (rom_size > max_size)
@@ -232,7 +235,7 @@ bool init_chip8(chip8_t *chip8, const char *rom_name)
     }
 
     // Load Rom
-    if (fread(&chip8->ram[entry_point], rom_size, 1, rom) != 1)
+    if (fread(&chip8->ram[ENTRY_POINT], rom_size, 1, rom) != 1)
     {
         SDL_Log("Couldnt read ROM %s\n", rom_name);
         return false;
@@ -242,7 +245,7 @@ bool init_chip8(chip8_t *chip8, const char *rom_name)
 
     // Set Chip8 machine defaults
     chip8->state = RUNNING;
-    chip8->PC = entry_point;
+    chip8->PC = ENTRY_POINT;
     chip8->rom_name = rom_name;
     chip8->stack_ptr = &chip8->stack[0];
 
@@ -339,6 +342,10 @@ void handle_input(chip8_t *chip8)
                     chip8->state = RUNNING;
                 }
                 return;
+            case SDLK_TAB:
+                // Reset Rom
+                init_chip8(chip8, chip8->rom_name);
+                break;
 
             case SDLK_1:
                 chip8->keypad[0x1] = true;
