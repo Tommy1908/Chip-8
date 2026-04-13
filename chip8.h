@@ -2,6 +2,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "config.h"
+
 typedef enum
 {
     QUIT,
@@ -38,3 +40,8 @@ typedef struct
 } chip8_t;
 
 bool init_chip8(chip8_t *chip8, const char *rom_name);
+void emulate_instruction(chip8_t *chip8, const config_t *config);
+void update_timers(chip8_t *chip8);
+#ifdef DEBUG
+void print_debug_info(const chip8_t *chip8, const config_t *config);
+#endif

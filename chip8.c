@@ -2,11 +2,9 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <time.h>
-
-#include <SDL2/SDL.h>
+#include <string.h>
 
 #include "chip8.h"
-#include "config.h"
 #include "media.h"
 
 #define ENTRY_POINT 0x200 // Where roms are loaded on ram
@@ -175,7 +173,7 @@ void print_debug_info(const chip8_t *chip8, const config_t *config)
             break;
         case 4:
             // 0x8XY4: Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.
-            printf("Set register V%X to V%X(0x%02X) + V%X(0x%02X), overflow? -> VF(%d)\n", chip8->instruction.X, chip8->instruction.X, chip8->V[chip8->instruction.X], chip8->instruction.Y, chip8->V[chip8->instruction.Y], (u_int16_t)chip8->V[chip8->instruction.X] + chip8->V[chip8->instruction.Y] > 255);
+            printf("Set register V%X to V%X(0x%02X) + V%X(0x%02X), overflow? -> VF(%d)\n", chip8->instruction.X, chip8->instruction.X, chip8->V[chip8->instruction.X], chip8->instruction.Y, chip8->V[chip8->instruction.Y], (uint16_t)chip8->V[chip8->instruction.X] + chip8->V[chip8->instruction.Y] > 255);
             break;
         case 5:
             // 0x8XY5: VY is subtracted from VX. VF is set to 0 when there's an underflow, and 1 when there is not. (i.e. VF set to 1 if VX >= VY and 0 if not)
@@ -444,7 +442,7 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
             break;
         case 4:
             // 0x8XY4: Adds VY to VX. VF is set to 1 when there's an overflow, and to 0 when there is not.
-            if ((u_int16_t)chip8->V[chip8->instruction.X] + chip8->V[chip8->instruction.Y] > 255)
+            if ((uint16_t)chip8->V[chip8->instruction.X] + chip8->V[chip8->instruction.Y] > 255)
             {
                 chip8->V[0xF] = 1;
             }
@@ -697,83 +695,4 @@ void update_timers(chip8_t *chip8)
         chip8->delay_timer--;
     if (chip8->sound_timer)
         chip8->sound_timer--;
-}
-
-int main(int argc, char **argv)
-{
-    // Default use of args
-    if (argc < 2)
-    {
-        fprintf(stderr, "Usage %s <rom>\n", argv[0]);
-        exit(EXIT_FAILURE);
-    }
-    // Initialize emulator config
-    config_t config = {0};
-    if (!set_config_from_args(&config, argc, argv))
-        exit(EXIT_FAILURE);
-
-    // Initialize SDL
-    sdl_t sdl = {0};
-    if (!init_sdl(&sdl, &config))
-        exit(EXIT_FAILURE);
-
-    // Initializa CHIP8 MACHINE
-    chip8_t chip8 = {0};
-    const char *rom_name = argv[1];
-    if (!init_chip8(&chip8, rom_name))
-        exit(EXIT_FAILURE);
-
-    // Initial screen clear
-    clear_screen(&sdl, &config);
-
-    // Prepare rand
-    srand(time(NULL));
-
-    // Main emulator loop
-    while (chip8.state != QUIT)
-    {
-        // Handle User input
-        handle_input(&chip8);
-
-        if (chip8.state == PAUSED)
-            continue;
-
-        // Get time
-        const uint64_t start_time = SDL_GetPerformanceCounter();
-
-        // In this frame emulate config.instructions_per_second / 60 instructions (60hz)
-        for (uint32_t i = 0; i < config.instructions_per_second / 60; i++)
-        {
-            emulate_instruction(&chip8, &config);
-        }
-        // Get time after peforming instructions
-        const uint64_t finish_time = SDL_GetPerformanceCounter();
-
-        // Delay fo aprox 60fs (1000ms/60 ~= 16)
-        double time_elapsed_ms = (double)((finish_time - start_time) * 1000) / SDL_GetPerformanceFrequency();
-        if (16.67f > time_elapsed_ms)
-        {
-            SDL_Delay((uint32_t)(16.67f - time_elapsed_ms));
-        }
-        // Update with changes
-        update_screen(sdl, &config, &chip8);
-        // Update timers (delay and sound)
-        update_timers(&chip8);
-        // Play sound
-        if (chip8.sound_timer > 0)
-            SDL_PauseAudioDevice(sdl.device, 0); // Play sound
-        else
-            SDL_PauseAudioDevice(sdl.device, 1); // Pause sound
-
-        if (chip8.PC > 4096)
-        {
-            fprintf(stderr, "Reach end PC:%d is out of bounds\n", chip8.PC);
-            break;
-        }
-    }
-
-    // Final cleanup
-    final_cleanup(&sdl);
-
-    exit(EXIT_SUCCESS);
 }
