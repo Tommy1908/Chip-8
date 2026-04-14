@@ -11,7 +11,7 @@ bool set_config_from_args(config_t *config, const int argc, char **argv)
     config->scale_y = 0;        // for scaling on android
     config->scale_y = 0;        // for scaling on android
 
-    config->scale = 10;
+    config->scale = 15;
 
     config->fg_color = 0xFFFFFFFF;
     config->bg_color = 0x00000000;

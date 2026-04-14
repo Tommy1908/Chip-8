@@ -3,12 +3,13 @@
 #include "android_roms.h"
 
 const char *rom_list[] = {
-    "tetris.ch8",
-    "brix.ch8",
-    "space_invaders.ch8",
-    "timer.ch8"};
+    //"tetris.ch8",
+    //"brix.ch8",
+    //"space_invaders.ch8",
+    //"timer.ch8"
+};
 int current_rom_idx = 0;
-const int rom_count = 4;
+const int rom_count = 4; // Put the number of roms you want to load. For example 4 in this case
 
 void load_next_rom(chip8_t *chip8)
 {
