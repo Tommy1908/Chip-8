@@ -3,7 +3,10 @@ CFLAGS = -std=c17 -Wall -Wextra -Werror
 LIBS = `sdl2-config --cflags --libs`
 TARGET = chip8
 
-SRCS = main.c chip8.c config.c media.c
+SRCS =  src/main.c\
+	 	src/chip8.c\
+		src/config.c\
+		src/media.c
 
 
 all: clean

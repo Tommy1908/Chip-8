@@ -61,3 +61,27 @@ chip8
 # Vscode 
 .vscode/
 
+### Android
+# Cache y compilación de Android
+chip8-android/.gradle/
+.gradle/
+chip8-android/.idea/
+.idea/
+*.iml
+chip8-android/build/
+chip8-android/app/build/
+chip8-android/app/.cxx/
+
+# Binarios generados por el NDK
+chip8-android/app/jni/obj/
+chip8-android/app/jni/libs/
+chip8-android/app/obj/
+chip8-android/app/libs/
+
+# Archivos locales
+local.properties
+chip8-android/local.properties
+
+# Roms de android
+chip8-android/app/src/main/assets/*
+!chip8-android/app/src/main/assets/.gitkeep
