@@ -6,6 +6,11 @@ bool set_config_from_args(config_t *config, const int argc, char **argv)
     // Defaults
     config->window_width = 64;  // Original X
     config->window_height = 32; // Original Y
+    config->offset_x = 0;       // for margin on android
+    config->offset_y = 0;       // for margin on android
+    config->scale_y = 0;        // for scaling on android
+    config->scale_y = 0;        // for scaling on android
+
     config->scale = 10;
 
     config->fg_color = 0xFFFFFFFF;
@@ -16,8 +21,10 @@ bool set_config_from_args(config_t *config, const int argc, char **argv)
 
     config->instructions_per_second = 700;
 
-    config->increment_i_on_0xFX = true; // On the original and chip-48 was incremented, schip was left unmodified
-    config->shift_from_vy = true;       // On the original it took vy and shift it into vx, later it was only from vx
+    // Some of these may allow you to pass certain tests, these seem to work on most games ive tried
+    config->increment_i_on_0xFX = false; // On the original and chip-48 was incremented, schip was left unmodified
+    config->shift_from_vy = false;       // On the original it took vy and shift it into vx, later it was only from vx
+    config->reset_vf_on_bitwise_ops = true;
 
     // TODO: AUDIO
     config->square_wave_freq = 440;    // Nota La (A4)

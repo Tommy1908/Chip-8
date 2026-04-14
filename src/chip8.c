@@ -12,11 +12,6 @@
 // Initialize CHIP8 (STATE) machine
 bool init_chip8(chip8_t *chip8, const char *rom_name)
 {
-    if (rom_name == NULL)
-    {
-        rom_name = "brik.ch8";
-    }
-
     memset(chip8, 0, sizeof(chip8_t)); // If coming back from reset
 
     const uint8_t font[] = {
@@ -441,17 +436,26 @@ void emulate_instruction(chip8_t *chip8, const config_t *config)
         case 1:
             // 0x8XY1: Sets VX to VX or VY (bitwise)
             chip8->V[chip8->instruction.X] |= chip8->V[chip8->instruction.Y];
-            chip8->V[0xF] = 0; // Quirk: Reset VF to 0 (might add to config if neccesary)
+            if (config->reset_vf_on_bitwise_ops)
+            {
+                chip8->V[0xF] = 0;
+            }
             break;
         case 2:
             // 0x8XY2: Sets VX to VX and VY (bitwise)
             chip8->V[chip8->instruction.X] &= chip8->V[chip8->instruction.Y];
-            chip8->V[0xF] = 0; // Quirk: Reset VF to 0 (might add to config if neccesary)
+            if (config->reset_vf_on_bitwise_ops)
+            {
+                chip8->V[0xF] = 0;
+            }
             break;
         case 3:
             // 0x8XY3: Sets VX to VX xor VY (bitwise)
             chip8->V[chip8->instruction.X] ^= chip8->V[chip8->instruction.Y];
-            chip8->V[0xF] = 0; // Quirk: Reset VF to 0 (might add to config if neccesary)
+            if (config->reset_vf_on_bitwise_ops)
+            {
+                chip8->V[0xF] = 0;
+            }
             break;
         case 4:
         {

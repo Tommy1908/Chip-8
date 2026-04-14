@@ -12,7 +12,9 @@ LOCAL_C_INCLUDES := $(LOCAL_PATH)/$(SDL_PATH)/include
 LOCAL_SRC_FILES := ../../../../src/main.c \
                    ../../../../src/media.c \
                    ../../../../src/config.c \
-                   ../../../../src/chip8.c
+                   ../../../../src/chip8.c \
+                   ../../../../src/android_ui.c\
+                   ../../../../src/android_roms.c
 
 LOCAL_SHARED_LIBRARIES := SDL2
 

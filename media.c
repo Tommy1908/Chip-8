@@ -29,33 +29,12 @@ bool init_sdl(sdl_t *sdl, config_t *config)
         return false;
     }
 
-    // Conditional window creation for Android and Linux
-#ifdef __ANDROID__
-    sdl->window = SDL_CreateWindow("Chip8",
-                                   0, 0, 0, 0,
-                                   SDL_WINDOW_FULLSCREEN_DESKTOP | SDL_WINDOW_SHOWN);
-
-    int w, h;
-    SDL_GetWindowSize(sdl->window, &w, &h);
-
-    int vertical_margin = 150;
-
-    // Use diferent scale might lead to some deformation or sparation of pixels, TODO: make this option, but seems easier to play games like this on small displays
-    int available_w = w - (margin * 2);
-    config->scale_x = available_w / 64;
-    config->scale_y = config->scale_x * 1.5;
-
-    config->offset_x = 0;
-    config->offset_y = vertical_margin;
-
-#else
-    sdl->window = SDL_CreateWindow("Chip8",
+    sdl->window = SDL_CreateWindow("Tommy's Chip8",
                                    SDL_WINDOWPOS_CENTERED,
                                    SDL_WINDOWPOS_CENTERED,
                                    config->window_width * config->scale,
                                    config->window_height * config->scale,
                                    config->window_flags);
-#endif
     if (!sdl->window)
     {
         SDL_Log("Couldn't create window %s\n", SDL_GetError());
@@ -135,14 +114,9 @@ void update_screen(const sdl_t sdl, const config_t *config, const chip8_t *chip8
     // Loop through display pixels
     for (uint32_t i = 0; i < sizeof chip8->display; i++)
     {
-// 1D index i to 2D X,Y
-#ifdef __ANDROID__
-        rect.x = (i % config->window_width) * config->scale_x + config->offset_x;
-        rect.y = (i / config->window_width) * config->scale_y + config->offset_y;
-#else
+        // 1D index i to 2D X,Y
         rect.x = (i % config->window_width) * config->scale;
         rect.y = (i / config->window_width) * config->scale;
-#endif
 
         if (chip8->display[i])
         {
@@ -168,7 +142,6 @@ void update_screen(const sdl_t sdl, const config_t *config, const chip8_t *chip8
     SDL_RenderPresent(sdl.renderer);
 }
 
-// Chip8                 Linux
 // 1  2	 3  C     ->     1  2  3  4
 // 4  5	 6  D     ->     Q  W  E  R
 // 7  8	 9  E     ->     A  S  D  F
@@ -206,6 +179,7 @@ void handle_input(chip8_t *chip8)
                 // Reset Rom
                 init_chip8(chip8, chip8->rom_name);
                 break;
+
             case SDLK_1:
                 chip8->keypad[0x1] = true;
                 break;

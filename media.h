@@ -1,5 +1,7 @@
 #pragma once
-#include "SDL.h"
+#include <SDL2/SDL.h>
+#include "config.h"
+#include "chip8.h"
 
 // SDL Container
 typedef struct
@@ -9,10 +11,6 @@ typedef struct
     SDL_AudioSpec want, have;
     SDL_AudioDeviceID device;
 } sdl_t;
-
-#include "config.h"
-#include "chip8.h"
-#include "android_ui.h"
 
 bool init_sdl(sdl_t *sdl, config_t *config);
 void audio_callback(void *userdata, uint8_t *stream, int len);

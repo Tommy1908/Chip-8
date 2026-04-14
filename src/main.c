@@ -8,14 +8,34 @@
 #include "chip8.h"
 #include "media.h"
 
+int main(int argc, char **argv);
+int main_loop(int argc, char **argv);
+
 int main(int argc, char **argv)
 {
+#ifdef __ANDROID__
+#include "android_roms.h"
+    // Android uses ROMS from Assets
+    // To be able to use it just like Linux we adapt it
+    char *rom_name = (char *)rom_list[current_rom_idx];
+
+    char *mock_argv[] = {argv[0], rom_name, NULL};
+    int mock_argc = 2;
+    return main_loop(mock_argc, mock_argv);
+#else
     // Default use of args
-    // if (argc < 2)
-    //{
-    //    fprintf(stderr, "Usage %s <rom>\n", argv[0]);
-    //    exit(EXIT_FAILURE);
-    //}
+    if (argc < 2)
+    {
+        fprintf(stderr, "Usage %s <rom>\n", argv[0]);
+        exit(EXIT_FAILURE);
+    }
+    return main_loop(argc, argv);
+
+#endif
+}
+
+int main_loop(int argc, char **argv)
+{
     // Initialize emulator config
     config_t config = {0};
     if (!set_config_from_args(&config, argc, argv))
@@ -28,7 +48,7 @@ int main(int argc, char **argv)
 
     // Initializa CHIP8 MACHINE
     chip8_t chip8 = {0};
-    const char *rom_name = argv[1];
+    char *rom_name = argv[1];
     if (!init_chip8(&chip8, rom_name))
         exit(EXIT_FAILURE);
 
