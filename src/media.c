@@ -39,9 +39,10 @@ bool init_sdl(sdl_t *sdl, config_t *config)
     SDL_GetWindowSize(sdl->window, &w, &h);
 
     int vertical_margin = 150;
+    int horizontal_margin = 10;
 
     // Use diferent scale might lead to some deformation or sparation of pixels, TODO: make this option, but seems easier to play games like this on small displays
-    int available_w = w - (margin * 2);
+    int available_w = w - (horizontal_margin * 2);
     config->scale_x = available_w / 64;
     config->scale_y = config->scale_x * 1.5;
 
@@ -118,7 +119,7 @@ void clear_screen(const sdl_t *sdl, const config_t *config)
     SDL_RenderClear(sdl->renderer);
 }
 
-void update_screen(const sdl_t sdl, const config_t *config, const chip8_t *chip8)
+void update_screen(const sdl_t *sdl, const config_t *config, const chip8_t *chip8)
 {
     SDL_Rect rect = {.x = 0, .y = 0, .w = config->scale, .h = config->scale};
 
@@ -147,25 +148,28 @@ void update_screen(const sdl_t sdl, const config_t *config, const chip8_t *chip8
         if (chip8->display[i])
         {
             // If on draw foreground
-            SDL_SetRenderDrawColor(sdl.renderer, fg_r, fg_g, fg_b, fg_a);
-            SDL_RenderFillRect(sdl.renderer, &rect);
+            SDL_SetRenderDrawColor(sdl->renderer, fg_r, fg_g, fg_b, fg_a);
+            SDL_RenderFillRect(sdl->renderer, &rect);
 
             // If drawing pixel outlines
             if (config->pixel_outlines)
             {
-                SDL_SetRenderDrawColor(sdl.renderer, bg_r, bg_g, bg_b, bg_a);
-                SDL_RenderDrawRect(sdl.renderer, &rect);
+                SDL_SetRenderDrawColor(sdl->renderer, bg_r, bg_g, bg_b, bg_a);
+                SDL_RenderDrawRect(sdl->renderer, &rect);
             }
         }
         else
         {
             // If off draw foreground
-            SDL_SetRenderDrawColor(sdl.renderer, bg_r, bg_g, bg_b, bg_a);
-            SDL_RenderFillRect(sdl.renderer, &rect);
+            SDL_SetRenderDrawColor(sdl->renderer, bg_r, bg_g, bg_b, bg_a);
+            SDL_RenderFillRect(sdl->renderer, &rect);
         }
     }
+#ifdef __ANDROID__
+    draw_android_ui(sdl, chip8);
+#endif
 
-    SDL_RenderPresent(sdl.renderer);
+    SDL_RenderPresent(sdl->renderer);
 }
 
 // Chip8                 Linux
@@ -173,8 +177,11 @@ void update_screen(const sdl_t sdl, const config_t *config, const chip8_t *chip8
 // 4  5	 6  D     ->     Q  W  E  R
 // 7  8	 9  E     ->     A  S  D  F
 // A  0	 B  F     ->     Z  X  C  V
-void handle_input(chip8_t *chip8)
+// Android
+// Show a virtual keyboard, just like Chip8
+void handle_input(chip8_t *chip8, sdl_t *sdl)
 {
+    (void)sdl; // Onlcy used on android, make compiler okey with not using it
     SDL_Event event;
 
     while (SDL_PollEvent(&event))
@@ -184,6 +191,14 @@ void handle_input(chip8_t *chip8)
         case SDL_QUIT:
             chip8->state = QUIT;
             return;
+
+#ifdef __ANDROID__
+        case SDL_FINGERDOWN:
+        case SDL_FINGERUP:
+            handle_android_touch(&event, chip8, sdl);
+            break;
+#endif
+
         case SDL_KEYDOWN:
             switch (event.key.keysym.sym)
             {

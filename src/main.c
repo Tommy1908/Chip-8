@@ -62,7 +62,7 @@ int main_loop(int argc, char **argv)
     while (chip8.state != QUIT)
     {
         // Handle User input
-        handle_input(&chip8);
+        handle_input(&chip8, &sdl);
 
         if (chip8.state == PAUSED)
             continue;
@@ -81,7 +81,7 @@ int main_loop(int argc, char **argv)
         double time_elapsed_ms = (double)((finish_time - start_time) * 1000) / SDL_GetPerformanceFrequency();
 
         // Update with changes
-        update_screen(sdl, &config, &chip8);
+        update_screen(&sdl, &config, &chip8);
         // Update timers (delay and sound)
         update_timers(&chip8);
         // Play sound
