@@ -41,6 +41,8 @@ int main(int argc, char **argv)
     // Main emulator loop
     while (chip8.state != QUIT)
     {
+        // Handle User input
+        handle_input(&chip8);
 
         if (chip8.state == PAUSED)
             continue;
@@ -51,20 +53,13 @@ int main(int argc, char **argv)
         // In this frame emulate config.instructions_per_second / 60 instructions (60hz)
         for (uint32_t i = 0; i < config.instructions_per_second / 60; i++)
         {
-            // Handle User input
-            handle_input(&chip8);
 
             emulate_instruction(&chip8, &config);
         }
         // Get time after peforming instructions
         const uint64_t finish_time = SDL_GetPerformanceCounter();
-
-        // Delay fo aprox 60fs (1000ms/60 ~= 16)
         double time_elapsed_ms = (double)((finish_time - start_time) * 1000) / SDL_GetPerformanceFrequency();
-        if (16.67f > time_elapsed_ms)
-        {
-            SDL_Delay((uint32_t)(16.67f - time_elapsed_ms));
-        }
+
         // Update with changes
         update_screen(sdl, &config, &chip8);
         // Update timers (delay and sound)
@@ -75,10 +70,14 @@ int main(int argc, char **argv)
         else
             SDL_PauseAudioDevice(sdl.device, 1); // Pause sound
 
+        if (16.67f > time_elapsed_ms)
+        {
+            SDL_Delay((uint32_t)(16.67f - time_elapsed_ms));
+        }
         if (chip8.PC > 4096)
         {
             fprintf(stderr, "Reach end PC:%d is out of bounds\n", chip8.PC);
-            break;
+            exit(EXIT_FAILURE);
         }
     }
 

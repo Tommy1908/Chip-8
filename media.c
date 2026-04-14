@@ -179,7 +179,6 @@ void handle_input(chip8_t *chip8)
                 // Reset Rom
                 init_chip8(chip8, chip8->rom_name);
                 break;
-
             case SDLK_1:
                 chip8->keypad[0x1] = true;
                 break;

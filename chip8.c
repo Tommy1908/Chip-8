@@ -40,7 +40,7 @@ bool init_chip8(chip8_t *chip8, const char *rom_name)
     FILE *rom = fopen(rom_name, "rb");
     if (!rom)
     {
-        SDL_Log("ROM %s is not valid\n", rom_name);
+        printf("ROM %s is not valid\n", rom_name);
         return false;
     }
 
@@ -51,14 +51,14 @@ bool init_chip8(chip8_t *chip8, const char *rom_name)
 
     if (rom_size > max_size)
     {
-        SDL_Log("ROM %s is too big (size %zu) for RAM (size %zu)\n", rom_name, rom_size, max_size);
+        printf("ROM %s is too big (size %zu) for RAM (size %zu)\n", rom_name, rom_size, max_size);
         return false;
     }
 
     // Load Rom
     if (fread(&chip8->ram[ENTRY_POINT], rom_size, 1, rom) != 1)
     {
-        SDL_Log("Couldnt read ROM %s\n", rom_name);
+        printf("Couldnt read ROM %s\n", rom_name);
         return false;
     }
 
