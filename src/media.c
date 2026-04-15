@@ -179,6 +179,46 @@ void update_screen(const sdl_t *sdl, const config_t *config, const chip8_t *chip
 // A  0	 B  F     ->     Z  X  C  V
 // Android
 // Show a virtual keyboard, just like Chip8
+static int map_key(SDL_Keycode key)
+{
+    switch (key)
+    {
+    case SDLK_x:
+        return 0x0;
+    case SDLK_1:
+        return 0x1;
+    case SDLK_2:
+        return 0x2;
+    case SDLK_3:
+        return 0x3;
+    case SDLK_q:
+        return 0x4;
+    case SDLK_w:
+        return 0x5;
+    case SDLK_e:
+        return 0x6;
+    case SDLK_a:
+        return 0x7;
+    case SDLK_s:
+        return 0x8;
+    case SDLK_d:
+        return 0x9;
+    case SDLK_z:
+        return 0xA;
+    case SDLK_c:
+        return 0xB;
+    case SDLK_4:
+        return 0xC;
+    case SDLK_r:
+        return 0xD;
+    case SDLK_f:
+        return 0xE;
+    case SDLK_v:
+        return 0xF;
+    default:
+        return -1;
+    }
+}
 void handle_input(chip8_t *chip8, sdl_t *sdl)
 {
     (void)sdl; // Onlcy used on android, make compiler okey with not using it
@@ -188,16 +228,15 @@ void handle_input(chip8_t *chip8, sdl_t *sdl)
     {
         switch (event.type)
         {
-        case SDL_QUIT:
-            chip8->state = QUIT;
-            return;
-
 #ifdef __ANDROID__
         case SDL_FINGERDOWN:
         case SDL_FINGERUP:
             handle_android_touch(&event, chip8, sdl);
             break;
-#endif
+#else
+        case SDL_QUIT:
+            chip8->state = QUIT;
+            return;
 
         case SDL_KEYDOWN:
             switch (event.key.keysym.sym)
@@ -221,121 +260,19 @@ void handle_input(chip8_t *chip8, sdl_t *sdl)
                 // Reset Rom
                 init_chip8(chip8, chip8->rom_name);
                 break;
-            case SDLK_1:
-                chip8->keypad[0x1] = true;
-                break;
-            case SDLK_2:
-                chip8->keypad[0x2] = true;
-                break;
-            case SDLK_3:
-                chip8->keypad[0x3] = true;
-                break;
-            case SDLK_4:
-                chip8->keypad[0xC] = true;
-                break;
-
-            case SDLK_q:
-                chip8->keypad[0x4] = true;
-                break;
-            case SDLK_w:
-                chip8->keypad[0x5] = true;
-                break;
-            case SDLK_e:
-                chip8->keypad[0x6] = true;
-                break;
-            case SDLK_r:
-                chip8->keypad[0xD] = true;
-                break;
-
-            case SDLK_a:
-                chip8->keypad[0x7] = true;
-                break;
-            case SDLK_s:
-                chip8->keypad[0x8] = true;
-                break;
-            case SDLK_d:
-                chip8->keypad[0x9] = true;
-                break;
-            case SDLK_f:
-                chip8->keypad[0xE] = true;
-                break;
-
-            case SDLK_z:
-                chip8->keypad[0xA] = true;
-                break;
-            case SDLK_x:
-                chip8->keypad[0x0] = true;
-                break;
-            case SDLK_c:
-                chip8->keypad[0xB] = true;
-                break;
-            case SDLK_v:
-                chip8->keypad[0xF] = true;
-                break;
-
             default:
-#ifdef DEBUG
-                SDL_Log("Tecla presionada: %s\n", SDL_GetKeyName(event.key.keysym.sym));
-#endif
+                int key = map_key(event.key.keysym.sym);
+                if (key != -1)
+                    chip8->keypad[key] = 1;
                 break;
             }
             break;
         case SDL_KEYUP:
-            switch (event.key.keysym.sym)
-            {
-            case SDLK_1:
-                chip8->keypad[0x1] = false;
-                break;
-            case SDLK_2:
-                chip8->keypad[0x2] = false;
-                break;
-            case SDLK_3:
-                chip8->keypad[0x3] = false;
-                break;
-            case SDLK_4:
-                chip8->keypad[0xC] = false;
-                break;
-            case SDLK_q:
-                chip8->keypad[0x4] = false;
-                break;
-            case SDLK_w:
-                chip8->keypad[0x5] = false;
-                break;
-            case SDLK_e:
-                chip8->keypad[0x6] = false;
-                break;
-            case SDLK_r:
-                chip8->keypad[0xD] = false;
-                break;
-            case SDLK_a:
-                chip8->keypad[0x7] = false;
-                break;
-            case SDLK_s:
-                chip8->keypad[0x8] = false;
-                break;
-            case SDLK_d:
-                chip8->keypad[0x9] = false;
-                break;
-            case SDLK_f:
-                chip8->keypad[0xE] = false;
-                break;
-            case SDLK_z:
-                chip8->keypad[0xA] = false;
-                break;
-            case SDLK_x:
-                chip8->keypad[0x0] = false;
-                break;
-            case SDLK_c:
-                chip8->keypad[0xB] = false;
-                break;
-            case SDLK_v:
-                chip8->keypad[0xF] = false;
-                break;
-            default:
-                // SDL_Log("Tecla soltada: %s\n", SDL_GetKeyName(event.key.keysym.sym));
-                break;
-            }
+            int key = map_key(event.key.keysym.sym);
+            if (key != -1)
+                chip8->keypad[key] = 0;
             break;
+#endif
         default:
             break;
         }
