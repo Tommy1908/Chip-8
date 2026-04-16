@@ -20,7 +20,7 @@ bool set_config_from_args(config_t *config, const int argc, char **argv)
 
     config->window_flags = 0;
 
-    config->instructions_per_second = 700;
+    config->instructions_per_second = 600;
 
     // Some of these may allow you to pass certain tests, these seem to work on most games ive tried
     config->increment_i_on_0xFX = false; // On the original and chip-48 was incremented, schip was left unmodified

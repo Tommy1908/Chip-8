@@ -6,6 +6,7 @@ typedef struct
 {
     SDL_Window *window;
     SDL_Renderer *renderer;
+    SDL_Texture *texture;
     SDL_AudioSpec want, have;
     SDL_AudioDeviceID device;
 } sdl_t;

@@ -43,10 +43,10 @@ bool init_sdl(sdl_t *sdl, config_t *config)
 
     // Use diferent scale might lead to some deformation or sparation of pixels, TODO: make this option, but seems easier to play games like this on small displays
     int available_w = w - (horizontal_margin * 2);
-    config->scale_x = available_w / 64;
+    config->scale_x = available_w / config->window_width;
     config->scale_y = config->scale_x;
 
-    config->offset_x = 0;
+    config->offset_x = (w - (config->window_width * config->scale)) / 2;
     config->offset_y = vertical_margin;
 
 #else
@@ -63,10 +63,21 @@ bool init_sdl(sdl_t *sdl, config_t *config)
         return false;
     }
 
-    sdl->renderer = SDL_CreateRenderer(sdl->window, -1, SDL_RENDERER_PRESENTVSYNC);
+    sdl->renderer = SDL_CreateRenderer(sdl->window, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (!sdl->renderer)
     {
         SDL_Log("Couldn't create Renderer %s\n", SDL_GetError());
+        return false;
+    }
+
+    sdl->texture = SDL_CreateTexture(
+        sdl->renderer,
+        SDL_PIXELFORMAT_RGBA8888, // 32 -> R G B A
+        SDL_TEXTUREACCESS_STREAMING,
+        config->window_width, config->window_height);
+    if (!sdl->texture)
+    {
+        SDL_Log("Couldn't create  textura: %s", SDL_GetError());
         return false;
     }
 
@@ -121,50 +132,46 @@ void clear_screen(const sdl_t *sdl, const config_t *config)
 
 void update_screen(const sdl_t *sdl, const config_t *config, const chip8_t *chip8)
 {
-    SDL_Rect rect = {.x = 0, .y = 0, .w = config->scale, .h = config->scale};
 
-    const uint8_t bg_r = config->bg_color >> 24 & 0XFF;
-    const uint8_t bg_g = config->bg_color >> 16 & 0XFF;
-    const uint8_t bg_b = config->bg_color >> 8 & 0XFF;
-    const uint8_t bg_a = config->bg_color & 0XFF;
+    int screen_size = (int)(sizeof chip8->display);
+    uint32_t pixels[screen_size];
+    static bool ghost_pixel[sizeof(chip8->display)] = {0}; // Some games do constant update of graphics, we can make everything last 1 more frame. Avoids flickering on some cases
 
-    const uint8_t fg_r = config->fg_color >> 24 & 0XFF;
-    const uint8_t fg_g = config->fg_color >> 16 & 0XFF;
-    const uint8_t fg_b = config->fg_color >> 8 & 0XFF;
-    const uint8_t fg_a = config->fg_color & 0XFF;
-
-    // Loop through display pixels
-    for (uint32_t i = 0; i < sizeof chip8->display; i++)
+    for (int i = 0; i < screen_size; i++)
     {
-// 1D index i to 2D X,Y
-#ifdef __ANDROID__
-        rect.x = (i % config->window_width) * config->scale_x + config->offset_x;
-        rect.y = (i / config->window_width) * config->scale_y + config->offset_y;
-#else
-        rect.x = (i % config->window_width) * config->scale;
-        rect.y = (i / config->window_width) * config->scale;
-#endif
-
         if (chip8->display[i])
         {
-            // If on draw foreground
-            SDL_SetRenderDrawColor(sdl->renderer, fg_r, fg_g, fg_b, fg_a);
-            SDL_RenderFillRect(sdl->renderer, &rect);
-
-            // If drawing pixel outlines
-            if (config->pixel_outlines)
-            {
-                SDL_SetRenderDrawColor(sdl->renderer, bg_r, bg_g, bg_b, bg_a);
-                SDL_RenderDrawRect(sdl->renderer, &rect);
-            }
+            pixels[i] = config->fg_color;
+            // Refresh ghost pixel
+            ghost_pixel[i] = 1;
         }
         else
         {
-            // If off draw foreground
-            SDL_SetRenderDrawColor(sdl->renderer, bg_r, bg_g, bg_b, bg_a);
-            SDL_RenderFillRect(sdl->renderer, &rect);
+            if (ghost_pixel[i])
+            {
+                pixels[i] = config->fg_color;
+                // Consume ghost pixel
+                ghost_pixel[i] = 0;
+            }
+            else
+            {
+                pixels[i] = config->bg_color;
+            }
         }
     }
+
+    SDL_UpdateTexture(sdl->texture, NULL, pixels, config->window_width * sizeof(uint32_t));
+
+    // Here we create the window size rectangle, to scale the texture
+    SDL_Rect dest_rect = {
+        .x = config->offset_x,
+        .y = config->offset_y,
+        .w = 64 * config->scale,
+        .h = 32 * config->scale};
+
+    // Estiramos el renderer con la textura
+    SDL_RenderCopy(sdl->renderer, sdl->texture, NULL, &dest_rect);
+
 #ifdef __ANDROID__
     draw_android_ui(sdl, chip8, config->keyboard_start);
 #endif
