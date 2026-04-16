@@ -1,4 +1,5 @@
 #include "android_touch.h"
+#include "android_roms.h"
 
 static const uint8_t chip8_keymap[4][4] = {
     {0x1, 0x2, 0x3, 0xC},

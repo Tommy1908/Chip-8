@@ -64,36 +64,39 @@ int main_loop(int argc, char **argv)
         // Handle User input
         handle_input(&chip8, &sdl, &config);
 
-        if (chip8.state == PAUSED)
-            continue;
-
         // Get time
         const uint64_t start_time = SDL_GetPerformanceCounter();
 
-        // In this frame emulate config.instructions_per_second / 60 instructions (60hz)
-        for (uint32_t i = 0; i < config.instructions_per_second / 60; i++)
+        // If running emulate the instructions
+        if (chip8.state == RUNNING)
         {
+            // In this frame emulate config.instructions_per_second / 60 instructions (60hz)
+            for (uint32_t i = 0; i < config.instructions_per_second / 60; i++)
+            {
+                emulate_instruction(&chip8, &config);
+            }
 
-            emulate_instruction(&chip8, &config);
+            // Update timers (delay and sound)
+            update_timers(&chip8);
         }
-        // Get time after peforming instructions
-        const uint64_t finish_time = SDL_GetPerformanceCounter();
-        double time_elapsed_ms = (double)((finish_time - start_time) * 1000) / SDL_GetPerformanceFrequency();
-
         // Update with changes
         update_screen(&sdl, &config, &chip8);
-        // Update timers (delay and sound)
-        update_timers(&chip8);
+
         // Play sound
-        if (chip8.sound_timer > 0)
+        if (chip8.sound_timer > 0 && chip8.state == RUNNING)
             SDL_PauseAudioDevice(sdl.device, 0); // Play sound
         else
             SDL_PauseAudioDevice(sdl.device, 1); // Pause sound
+
+        // Get time after peforming instructions
+        const uint64_t finish_time = SDL_GetPerformanceCounter();
+        double time_elapsed_ms = (double)((finish_time - start_time) * 1000) / SDL_GetPerformanceFrequency();
 
         if (16.67f > time_elapsed_ms)
         {
             SDL_Delay((uint32_t)(16.67f - time_elapsed_ms));
         }
+
         if (chip8.PC > 4096)
         {
             fprintf(stderr, "Reach end PC:%d is out of bounds\n", chip8.PC);

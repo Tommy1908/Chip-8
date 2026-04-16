@@ -194,12 +194,15 @@ static void draw_special_buttons(SDL_Renderer *renderer, uint32_t width, uint32_
 
 void draw_android_ui(const sdl_t *sdl, const chip8_t *chip8, float keyboard_start)
 {
-    // TODO: print a "PAUSED" text on screen when paused
     int width, height;
     SDL_GetWindowSize(sdl->window, &width, &height);
-
-    // 45% percent is where the ui can start drawing
+    // keyboard_start is a float for the percentage where the keyboard ui can start drawing (in other words how much the screen takes)
     uint32_t ui_top = height * keyboard_start;
+
+    if (chip8->state == PAUSED)
+        draw_centered_text_in_rect(sdl->renderer, "PAUSED", (SDL_Rect){0, 0, width, 500}, 10, true);
+    // 500px down the top of phone seem ok, and avoided more mix in configs
+
     // Divide spacer for amount of keys, it will have original 4x4 keyboard + 1 row 1x2
     uint32_t key_width = width / 4;
     uint32_t key_height = (height - ui_top) / 5;
