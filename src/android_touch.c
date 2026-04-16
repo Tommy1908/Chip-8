@@ -47,9 +47,8 @@ static void update_keypad_state(chip8_t *chip8, SDL_TouchID touch_id, float keyb
     }
 }
 
-void handle_android_touch(SDL_Event *event, chip8_t *chip8, float keyboard_start)
+void handle_android_touch(SDL_Event *event, chip8_t *chip8, float keyboard_start, SDL_Haptic *vibrator)
 {
-
     // Press once actions
     if (event->type == SDL_FINGERDOWN)
     {
@@ -64,6 +63,11 @@ void handle_android_touch(SDL_Event *event, chip8_t *chip8, float keyboard_start
         }
         else
         {
+            if (vibrator != NULL)
+            {
+                // Fuerza (0.0 a 1.0) y duración en ms
+                SDL_HapticRumblePlay(vibrator, 0.4, 50);
+            }
             // Special buttons
             int row, col;
             get_keyboard_position(x, y, keyboard_start, &row, &col);

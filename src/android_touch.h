@@ -3,4 +3,4 @@
 #include "chip8.h"
 #include "media.h"
 
-void handle_android_touch(SDL_Event *event, chip8_t *chip8, float keyboard_start);
+void handle_android_touch(SDL_Event *event, chip8_t *chip8, float keyboard_start, SDL_Haptic *vibrator);

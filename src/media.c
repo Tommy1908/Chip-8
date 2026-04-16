@@ -49,6 +49,21 @@ bool init_sdl(sdl_t *sdl, config_t *config)
     config->offset_x = (w - (config->window_width * config->scale)) / 2;
     config->offset_y = vertical_margin;
 
+    // Init vibration
+    sdl->vibrator = NULL;
+    if (SDL_InitSubSystem(SDL_INIT_HAPTIC) >= 0)
+    {
+        sdl->vibrator = SDL_HapticOpen(0);
+        if (sdl->vibrator)
+        {
+            if (SDL_HapticRumbleInit(sdl->vibrator) != 0) // 0 is simple vibration, checking its avalaible
+            {
+                SDL_HapticClose(sdl->vibrator);
+                sdl->vibrator = NULL;
+            }
+        }
+    }
+
 #else
     sdl->window = SDL_CreateWindow("Chip8",
                                    SDL_WINDOWPOS_CENTERED,
@@ -111,8 +126,18 @@ bool init_sdl(sdl_t *sdl, config_t *config)
     return true;
 }
 
-void final_cleanup(const sdl_t *sdl)
+void final_cleanup(sdl_t *sdl)
 {
+#ifdef __ANDROID__
+    if (sdl->vibrator != NULL)
+    {
+        SDL_HapticClose(sdl->vibrator);
+        sdl->vibrator = NULL;
+    }
+#endif
+
+    SDL_CloseAudioDevice(sdl->device);
+    SDL_DestroyTexture(sdl->texture);
     SDL_DestroyRenderer(sdl->renderer);
     SDL_DestroyWindow(sdl->window);
     SDL_Quit();
@@ -241,7 +266,7 @@ void handle_input(chip8_t *chip8, sdl_t *sdl, const config_t *config)
         case SDL_FINGERUP:
         case SDL_FINGERMOTION:
             SDL_Log("El valor antes: %f", config->keyboard_start);
-            handle_android_touch(&event, chip8, config->keyboard_start);
+            handle_android_touch(&event, chip8, config->keyboard_start, sdl->vibrator);
             break;
 #endif
         case SDL_QUIT:
