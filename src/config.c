@@ -4,12 +4,13 @@
 bool set_config_from_args(config_t *config, const int argc, char **argv)
 {
     // Defaults
-    config->window_width = 64;  // Original X
-    config->window_height = 32; // Original Y
-    config->offset_x = 0;       // for margin on android
-    config->offset_y = 0;       // for margin on android
-    config->scale_y = 0;        // for scaling on android
-    config->scale_y = 0;        // for scaling on android
+    config->window_width = 64;      // Original X
+    config->window_height = 32;     // Original Y
+    config->offset_x = 0;           // for margin on android
+    config->offset_y = 0;           // for margin on android
+    config->scale_y = 0;            // for scaling on android
+    config->scale_y = 0;            // for scaling on android
+    config->keyboard_start = 0.45f; // 0->0.45 percent of screen is reserved for game display, rest is UI
 
     config->scale = 15;
 

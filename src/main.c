@@ -62,7 +62,7 @@ int main_loop(int argc, char **argv)
     while (chip8.state != QUIT)
     {
         // Handle User input
-        handle_input(&chip8, &sdl);
+        handle_input(&chip8, &sdl, &config);
 
         if (chip8.state == PAUSED)
             continue;

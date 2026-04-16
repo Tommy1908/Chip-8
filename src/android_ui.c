@@ -2,8 +2,6 @@
 #include "media.h"
 #include "chip8.h"
 
-#define keyboard_start 0.45f // 0-0.45f is reserved game, rest is keyboard
-
 extern void load_next_rom(chip8_t *chip8);
 extern const char *get_next_rom_name();
 
@@ -194,9 +192,9 @@ static void draw_special_buttons(SDL_Renderer *renderer, uint32_t width, uint32_
     draw_centered_text_in_rect(renderer, next_txt_buffer, btn_right, text_sacale, true);
 }
 
-void draw_android_ui(const sdl_t *sdl, const chip8_t *chip8)
+void draw_android_ui(const sdl_t *sdl, const chip8_t *chip8, float keyboard_start)
 {
-    uint32_t width, height;
+    int width, height;
     SDL_GetWindowSize(sdl->window, &width, &height);
 
     // 45% percent is where the ui can start drawing
@@ -210,60 +208,4 @@ void draw_android_ui(const sdl_t *sdl, const chip8_t *chip8)
 
     // Special buttoms
     draw_special_buttons(sdl->renderer, width, height, ui_top, key_height);
-}
-
-void handle_android_touch(SDL_Event *event, chip8_t *chip8, sdl_t *sdl)
-{
-    int width, height;
-    SDL_GetWindowSize(sdl->window, &width, &height);
-
-    // Get coord
-    float x = event->tfinger.x;
-    float y = event->tfinger.y;
-
-    bool is_down = (event->type == SDL_FINGERDOWN);
-
-    // Adjust to the keyboard sice (0-0.45 game 0.45-1 is keyboard)
-    if (y > keyboard_start)
-    {
-        // So right now we have 0.45->1.00
-        //  Normalize height, multiply and truncate
-        float normalized_y = (y - keyboard_start) / (1.0f - keyboard_start);
-        int row = (int)(normalized_y * 5.0f);
-        int col = (int)(x * 4.0f);
-
-        if (col > 3)
-            col = 3;
-        if (row < 4)
-        {
-            // Activate chip8 keypad
-            chip8->keypad[chip8_keymap[row][col]] = is_down;
-        }
-        else if (row == 4 && is_down)
-        {
-            // Special keys
-            if (col < 2)
-                // Restart rom
-                init_chip8(chip8, chip8->rom_name);
-            else
-                // Change rom
-                load_next_rom(chip8);
-        }
-    }
-    else
-    {
-        if (is_down)
-        {
-            // Pause when touching the game screen
-            if (chip8->state == RUNNING)
-            {
-                chip8->state = PAUSED;
-                puts("-----PAUSED-----");
-            }
-            else
-            {
-                chip8->state = RUNNING;
-            }
-        }
-    }
 }

@@ -38,13 +38,13 @@ bool init_sdl(sdl_t *sdl, config_t *config)
     int w, h;
     SDL_GetWindowSize(sdl->window, &w, &h);
 
-    int vertical_margin = 150;
+    int vertical_margin = 400;
     int horizontal_margin = 10;
 
     // Use diferent scale might lead to some deformation or sparation of pixels, TODO: make this option, but seems easier to play games like this on small displays
     int available_w = w - (horizontal_margin * 2);
     config->scale_x = available_w / 64;
-    config->scale_y = config->scale_x * 1.5;
+    config->scale_y = config->scale_x;
 
     config->offset_x = 0;
     config->offset_y = vertical_margin;
@@ -166,7 +166,7 @@ void update_screen(const sdl_t *sdl, const config_t *config, const chip8_t *chip
         }
     }
 #ifdef __ANDROID__
-    draw_android_ui(sdl, chip8);
+    draw_android_ui(sdl, chip8, config->keyboard_start);
 #endif
 
     SDL_RenderPresent(sdl->renderer);
@@ -219,9 +219,10 @@ static int map_key(SDL_Keycode key)
         return -1;
     }
 }
-void handle_input(chip8_t *chip8, sdl_t *sdl)
+void handle_input(chip8_t *chip8, sdl_t *sdl, const config_t *config)
 {
-    (void)sdl; // Onlcy used on android, make compiler okey with not using it
+    (void)sdl;    // Only used on android, make compiler okey with not using it
+    (void)config; // Only used on android, make compiler okey with not using it
     SDL_Event event;
 
     while (SDL_PollEvent(&event))
@@ -231,9 +232,10 @@ void handle_input(chip8_t *chip8, sdl_t *sdl)
 #ifdef __ANDROID__
         case SDL_FINGERDOWN:
         case SDL_FINGERUP:
-            handle_android_touch(&event, chip8, sdl);
+            SDL_Log("El valor antes: %f", config->keyboard_start);
+            handle_android_touch(&event, chip8, sdl, config->keyboard_start);
             break;
-#else
+#endif
         case SDL_QUIT:
             chip8->state = QUIT;
             return;
@@ -261,18 +263,21 @@ void handle_input(chip8_t *chip8, sdl_t *sdl)
                 init_chip8(chip8, chip8->rom_name);
                 break;
             default:
+            {
                 int key = map_key(event.key.keysym.sym);
                 if (key != -1)
                     chip8->keypad[key] = 1;
                 break;
             }
+            }
             break;
         case SDL_KEYUP:
+        {
             int key = map_key(event.key.keysym.sym);
             if (key != -1)
                 chip8->keypad[key] = 0;
             break;
-#endif
+        }
         default:
             break;
         }

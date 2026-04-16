@@ -14,7 +14,8 @@ LOCAL_SRC_FILES := ../../../../src/main.c \
                    ../../../../src/config.c \
                    ../../../../src/chip8.c \
                    ../../../../src/android_ui.c\
-                   ../../../../src/android_roms.c
+                   ../../../../src/android_roms.c\
+                   ../../../../src/android_touch.c
 
 LOCAL_SHARED_LIBRARIES := SDL2
 

@@ -12,6 +12,7 @@ typedef struct
     uint32_t scale_x;
     uint32_t scale_y;
     uint32_t scale;
+    float keyboard_start;
     uint32_t window_flags; // https://wiki.libsdl.org/SDL2/SDL_WindowFlags
     uint32_t fg_color;     // Foreground RGBA8888
     uint32_t bg_color;     // Background RGBA8888
