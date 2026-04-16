@@ -232,8 +232,9 @@ void handle_input(chip8_t *chip8, sdl_t *sdl, const config_t *config)
 #ifdef __ANDROID__
         case SDL_FINGERDOWN:
         case SDL_FINGERUP:
+        case SDL_FINGERMOTION:
             SDL_Log("El valor antes: %f", config->keyboard_start);
-            handle_android_touch(&event, chip8, sdl, config->keyboard_start);
+            handle_android_touch(&event, chip8, config->keyboard_start);
             break;
 #endif
         case SDL_QUIT:

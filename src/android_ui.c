@@ -194,6 +194,7 @@ static void draw_special_buttons(SDL_Renderer *renderer, uint32_t width, uint32_
 
 void draw_android_ui(const sdl_t *sdl, const chip8_t *chip8, float keyboard_start)
 {
+    // TODO: print a "PAUSED" text on screen when paused
     int width, height;
     SDL_GetWindowSize(sdl->window, &width, &height);
 

@@ -6,59 +6,79 @@ static const uint8_t chip8_keymap[4][4] = {
     {0x7, 0x8, 0x9, 0xE},
     {0xA, 0x0, 0xB, 0xF}};
 
-void handle_android_touch(SDL_Event *event, chip8_t *chip8, sdl_t *sdl, float keyboard_start)
+static void get_keyboard_position(float x, float y, float keyboard_start, int *row, int *col)
 {
-    SDL_Log("El que llega: %f", keyboard_start);
-    int width, height;
-    SDL_GetWindowSize(sdl->window, &width, &height);
+    // So right now we have 0.45->1.00
+    //  Normalize height, multiply and truncate
+    float normalized_y = (y - keyboard_start) / (1.0f - keyboard_start);
+    *row = (int)(normalized_y * 5.0f);
+    *col = (int)(x * 4.0f);
 
-    // Get coord
-    float x = event->tfinger.x;
-    float y = event->tfinger.y;
+    if (*col > 3)
+        *col = 3;
+    if (*row > 4)
+        *row = 4;
+}
 
-    bool is_down = (event->type == SDL_FINGERDOWN);
+// Updates acording to current state (moving the finger from one key to other is supported)
+static void update_keypad_state(chip8_t *chip8, SDL_TouchID touch_id, float keyboard_start)
+{
+    // Clean current keypad info, if moved the finger we need to erase old data
+    memset(chip8->keypad, 0, sizeof(chip8->keypad));
+    int num_fingers = SDL_GetNumTouchFingers(touch_id);
 
-    // Adjust to the keyboard sice (0-0.45 game 0.45-1 is keyboard)
-    if (y > keyboard_start)
+    for (int i = 0; i < num_fingers; i++)
     {
-        // So right now we have 0.45->1.00
-        //  Normalize height, multiply and truncate
-        float normalized_y = (y - keyboard_start) / (1.0f - keyboard_start);
-        int row = (int)(normalized_y * 5.0f);
-        int col = (int)(x * 4.0f);
+        SDL_Finger *finger = SDL_GetTouchFinger(touch_id, i);
 
-        if (col > 3)
-            col = 3;
+        // Only check for keyboard touch
+        if (finger->y <= keyboard_start)
+            continue;
+
+        int row, col;
+        get_keyboard_position(finger->x, finger->y, keyboard_start, &row, &col);
+
+        // Avoid moving into special key (only want to move in input keys)
         if (row < 4)
         {
-            // Activate chip8 keypad
-            chip8->keypad[chip8_keymap[row][col]] = is_down;
-        }
-        else if (row == 4 && is_down)
-        {
-            // Special keys
-            if (col < 2)
-                // Restart rom
-                init_chip8(chip8, chip8->rom_name);
-            else
-                // Change rom
-                load_next_rom(chip8);
+            chip8->keypad[chip8_keymap[row][col]] = true;
         }
     }
-    else
+}
+
+void handle_android_touch(SDL_Event *event, chip8_t *chip8, float keyboard_start)
+{
+
+    // Press once actions
+    if (event->type == SDL_FINGERDOWN)
     {
-        if (is_down)
+        float x = event->tfinger.x;
+        float y = event->tfinger.y;
+
+        // Adjust to the keyboard sice (0-0.45 game 0.45-1 is keyboard)
+        if (y < keyboard_start)
         {
-            // Pause when touching the game screen
-            if (chip8->state == RUNNING)
+            // Game screen
+            chip8->state = (chip8->state == RUNNING) ? PAUSED : RUNNING;
+        }
+        else
+        {
+            // Special buttons
+            int row, col;
+            get_keyboard_position(x, y, keyboard_start, &row, &col);
+
+            if (row == 4)
             {
-                chip8->state = PAUSED;
-                puts("-----PAUSED-----");
-            }
-            else
-            {
-                chip8->state = RUNNING;
+                if (col < 2)
+                    init_chip8(chip8, chip8->rom_name); // Restart rom
+                else
+                    load_next_rom(chip8); // Change rom
             }
         }
     }
+
+    // Handle state continuously for keypad, gets checked when pressing down, when releasing it, and when the finger moves
+    // Doing this many checks doesn’t seem to impact performance much
+    // Feels nicer this way to use the keyboard
+    update_keypad_state(chip8, event->tfinger.touchId, keyboard_start);
 }
